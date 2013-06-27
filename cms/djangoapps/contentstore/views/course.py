@@ -36,7 +36,6 @@ from auth.authz import create_all_course_groups, is_user_in_creator_group
 from util.json_request import expect_json
 
 from .access import has_access, get_location_and_verify_access
-from .requests import get_request_method
 from .tabs import initialize_course_tabs
 from .component import (
     OPEN_ENDED_COMPONENT_TYPES, NOTE_COMPONENT_TYPES,
@@ -198,12 +197,10 @@ def course_info_updates(request, org, course, provided_id=None):
     if not has_access(request.user, location):
         raise PermissionDenied()
 
-    real_method = get_request_method(request)
-
     if request.method == 'GET':
         return HttpResponse(json.dumps(get_course_updates(location)),
                             mimetype="application/json")
-    elif real_method == 'DELETE':
+    elif request.method == 'DELETE':
         try:
             return HttpResponse(json.dumps(delete_course_update(location,
                                 request.POST, provided_id)), mimetype="application/json")
@@ -312,6 +309,7 @@ def course_settings_updates(request, org, course, name, section):
 
 
 @expect_json
+@require_http_methods(("GET", "POST", "PUT", "DELETE"))
 @login_required
 @ensure_csrf_cookie
 def course_grader_updates(request, org, course, name, grader_index=None):
@@ -324,22 +322,21 @@ def course_grader_updates(request, org, course, name, grader_index=None):
 
     location = get_location_and_verify_access(request, org, course, name)
 
-    real_method = get_request_method(request)
-
-    if real_method == 'GET':
+    if request.method == 'GET':
         # Cannot just do a get w/o knowing the course name :-(
         return HttpResponse(json.dumps(CourseGradingModel.fetch_grader(Location(location), grader_index)),
                             mimetype="application/json")
-    elif real_method == "DELETE":
+    elif request.method == "DELETE":
         # ??? Should this return anything? Perhaps success fail?
         CourseGradingModel.delete_grader(Location(location), grader_index)
         return HttpResponse()
-    elif request.method == 'POST':  # post or put, doesn't matter.
+    else:  # post or put, doesn't matter.
         return HttpResponse(json.dumps(CourseGradingModel.update_grader_from_json(Location(location), request.POST)),
                             mimetype="application/json")
 
 
 # # NB: expect_json failed on ["key", "key2"] and json payload
+@require_http_methods(("GET", "POST", "PUT", "DELETE"))
 @login_required
 @ensure_csrf_cookie
 def course_advanced_updates(request, org, course, name):
@@ -351,16 +348,14 @@ def course_advanced_updates(request, org, course, name):
     """
     location = get_location_and_verify_access(request, org, course, name)
 
-    real_method = get_request_method(request)
-
-    if real_method == 'GET':
+    if request.method == 'GET':
         return HttpResponse(json.dumps(CourseMetadata.fetch(location)),
                             mimetype="application/json")
-    elif real_method == 'DELETE':
+    elif request.method == 'DELETE':
         return HttpResponse(json.dumps(CourseMetadata.delete_key(location,
                                                                  json.loads(request.body))),
                             mimetype="application/json")
-    elif real_method == 'POST' or real_method == 'PUT':
+    else:
         # NOTE: request.POST is messed up because expect_json
         # cloned_request.POST.copy() is creating a defective entry w/ the whole payload as the key
         request_body = json.loads(request.body)

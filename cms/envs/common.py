@@ -139,6 +139,7 @@ MIDDLEWARE_CLASSES = (
     'django.middleware.common.CommonMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
+    'method_override.middleware.MethodOverrideMiddleware',
 
     # Instead of AuthenticationMiddleware, we use a cache-backed version
     'cache_toolbox.middleware.CacheBackedAuthenticationMiddleware',
@@ -321,6 +322,7 @@ INSTALLED_APPS = (
     'django.contrib.messages',
     'djcelery',
     'south',
+    'method_override',
 
     # Monitor the status of services
     'service_status',
