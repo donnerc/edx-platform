@@ -11,7 +11,7 @@ from django.conf import settings
 from django.views.decorators.http import require_http_methods, require_POST
 from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
-from django.http import HttpResponse, HttpResponseBadRequest
+from django.http import HttpResponseBadRequest
 from util.json_request import JsonResponse
 from mitxmako.shortcuts import render_to_response
 
@@ -108,8 +108,9 @@ def create_new_course(request):
     try:
         dest_location = Location('i4x', org, number, 'course', Location.clean(display_name))
     except InvalidLocationError as error:
-        return HttpResponse(json.dumps({'ErrMsg': "Unable to create course '" +
-                                        display_name + "'.\n\n" + error.message}))
+        return JsonResponse({
+            "ErrMsg": "Unable to create course '{name}'.\n\n{err}".format(
+                name=display_name, err=error.message)})
 
     # see if the course already exists
     existing_course = None
@@ -119,13 +120,13 @@ def create_new_course(request):
         pass
 
     if existing_course is not None:
-        return HttpResponse(json.dumps({'ErrMsg': 'There is already a course defined with this name.'}))
+        return JsonResponse({'ErrMsg': 'There is already a course defined with this name.'})
 
     course_search_location = ['i4x', dest_location.org, dest_location.course, 'course', None]
     courses = modulestore().get_items(course_search_location)
 
     if len(courses) > 0:
-        return HttpResponse(json.dumps({'ErrMsg': 'There is already a course defined with the same organization and course number.'}))
+        return JsonResponse({'ErrMsg': 'There is already a course defined with the same organization and course number.'})
 
     new_course = modulestore('direct').clone_item(template, dest_location)
 
@@ -148,7 +149,7 @@ def create_new_course(request):
     # seed the forums
     seed_permissions_roles(new_course.location.course_id)
 
-    return HttpResponse(json.dumps({'id': new_course.location.url()}))
+    return JsonResponse({'id': new_course.location.url()})
 
 
 @login_required
@@ -198,19 +199,16 @@ def course_info_updates(request, org, course, provided_id=None):
         raise PermissionDenied()
 
     if request.method == 'GET':
-        return HttpResponse(json.dumps(get_course_updates(location)),
-                            mimetype="application/json")
+        return JsonResponse(get_course_updates(location))
     elif request.method == 'DELETE':
         try:
-            return HttpResponse(json.dumps(delete_course_update(location,
-                                request.POST, provided_id)), mimetype="application/json")
+            return JsonResponse(delete_course_update(location, request.POST, provided_id))
         except:
             return HttpResponseBadRequest("Failed to delete",
                                           content_type="text/plain")
     elif request.method == 'POST':
         try:
-            return HttpResponse(json.dumps(update_course_updates(location,
-                                request.POST, provided_id)), mimetype="application/json")
+            return JsonResponse(update_course_updates(location, request.POST, provided_id))
         except:
             return HttpResponseBadRequest("Failed to save",
                                           content_type="text/plain")
@@ -301,11 +299,9 @@ def course_settings_updates(request, org, course, name, section):
 
     if request.method == 'GET':
         # Cannot just do a get w/o knowing the course name :-(
-        return HttpResponse(json.dumps(manager.fetch(Location(['i4x', org, course, 'course', name])), cls=CourseSettingsEncoder),
-                            mimetype="application/json")
+        return JsonResponse(manager.fetch(Location(['i4x', org, course, 'course', name])), encoder=CourseSettingsEncoder)
     elif request.method == 'POST':  # post or put, doesn't matter.
-        return HttpResponse(json.dumps(manager.update_from_json(request.POST), cls=CourseSettingsEncoder),
-                            mimetype="application/json")
+        return JsonResponse(manager.update_from_json(request.POST), encoder=CourseSettingsEncoder)
 
 
 @expect_json
@@ -324,15 +320,13 @@ def course_grader_updates(request, org, course, name, grader_index=None):
 
     if request.method == 'GET':
         # Cannot just do a get w/o knowing the course name :-(
-        return HttpResponse(json.dumps(CourseGradingModel.fetch_grader(Location(location), grader_index)),
-                            mimetype="application/json")
+        return JsonResponse(CourseGradingModel.fetch_grader(Location(location), grader_index))
     elif request.method == "DELETE":
         # ??? Should this return anything? Perhaps success fail?
         CourseGradingModel.delete_grader(Location(location), grader_index)
-        return HttpResponse()
+        return JsonResponse()
     else:  # post or put, doesn't matter.
-        return HttpResponse(json.dumps(CourseGradingModel.update_grader_from_json(Location(location), request.POST)),
-                            mimetype="application/json")
+        return JsonResponse(CourseGradingModel.update_grader_from_json(Location(location), request.POST))
 
 
 # # NB: expect_json failed on ["key", "key2"] and json payload
@@ -349,12 +343,9 @@ def course_advanced_updates(request, org, course, name):
     location = get_location_and_verify_access(request, org, course, name)
 
     if request.method == 'GET':
-        return HttpResponse(json.dumps(CourseMetadata.fetch(location)),
-                            mimetype="application/json")
+        return JsonResponse(CourseMetadata.fetch(location))
     elif request.method == 'DELETE':
-        return HttpResponse(json.dumps(CourseMetadata.delete_key(location,
-                                                                 json.loads(request.body))),
-                            mimetype="application/json")
+        return JsonResponse(CourseMetadata.delete_key(location, json.loads(request.body)))
     else:
         # NOTE: request.POST is messed up because expect_json
         # cloned_request.POST.copy() is creating a defective entry w/ the whole payload as the key
@@ -407,13 +398,11 @@ def course_advanced_updates(request, org, course, name):
                         # Indicate that tabs should *not* be filtered out of the metadata
                         filter_tabs = False
         try:
-            response_json = json.dumps(CourseMetadata.update_from_json(location,
-                                                                   request_body,
-                                                                   filter_tabs=filter_tabs))
-        except (TypeError, ValueError), e:
+            return JsonResponse(CourseMetadata.update_from_json(location,
+                                                                request_body,
+                                                                filter_tabs=filter_tabs))
+        except (TypeError, ValueError) as e:
             return HttpResponseBadRequest("Incorrect setting format. " + str(e), content_type="text/plain")
-
-        return HttpResponse(response_json, mimetype="application/json")
 
 
 class TextbookValidationError(Exception):
