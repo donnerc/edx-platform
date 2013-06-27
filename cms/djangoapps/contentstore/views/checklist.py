@@ -1,6 +1,7 @@
 import json
 
-from django.http import HttpResponse, HttpResponseBadRequest
+from util.json_request import JsonResponse
+from django.http import HttpResponseBadRequest
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods
 from django_future.csrf import ensure_csrf_cookie
@@ -69,7 +70,7 @@ def update_checklist(request, org, course, name, checklist_index=None):
             course_module.checklists[index] = json.loads(request.body)
             checklists, modified = expand_checklist_action_urls(course_module)
             modulestore.update_metadata(location, own_metadata(course_module))
-            return HttpResponse(json.dumps(checklists[index]), mimetype="application/json")
+            return JsonResponse(checklists[index])
         else:
             return HttpResponseBadRequest(
                 "Could not save checklist state because the checklist index was out of range or unspecified.",
@@ -79,7 +80,7 @@ def update_checklist(request, org, course, name, checklist_index=None):
         checklists, modified = expand_checklist_action_urls(course_module)
         if modified:
             modulestore.update_metadata(location, own_metadata(course_module))
-        return HttpResponse(json.dumps(checklists), mimetype="application/json")
+        return JsonResponse(checklists)
 
 
 def expand_checklist_action_urls(course_module):
