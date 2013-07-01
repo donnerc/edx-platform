@@ -28,11 +28,11 @@ def run_acceptance_tests(system, report_dir, harvest_args)
     # out the migrations from lms/django_comment_client, but then we'd have to
     # repair all the existing migrations from the upgrade tables in the DB.
     if system == :cms
-        sh(django_admin('lms', 'acceptance', 'syncdb', '--noinput'))
-        sh(django_admin('lms', 'acceptance', 'migrate', '--noinput'))
+        #sh(django_admin('lms', 'acceptance', 'syncdb', '--noinput'))
+        #sh(django_admin('lms', 'acceptance', 'migrate', '--noinput'))
     end
-    sh(django_admin(system, 'acceptance', 'syncdb', '--noinput'))
-    sh(django_admin(system, 'acceptance', 'migrate', '--noinput'))
+    #sh(django_admin(system, 'acceptance', 'syncdb', '--noinput'))
+    #sh(django_admin(system, 'acceptance', 'migrate', '--noinput'))
     test_sh(django_admin(system, 'acceptance', 'harvest', '--debug-mode', '--tag -skip', harvest_args))
 end
 
