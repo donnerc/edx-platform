@@ -15,5 +15,7 @@ class TrackingLog(models.Model):
     host = models.CharField(max_length=64, blank=True)
 
     def __unicode__(self):
-        return "[%s] %s@%s: %s | %s | %s | %s" % (self.time, self.username, self.ip, self.event_source,
-                                                  self.event_type, self.page, self.event)
+        return u"[{0}] {1}@{2}: {3} | {4} | {5} | {6}".format(
+            self.time, self.username, self.ip, self.event_source,
+            self.event_type, self.page, self.event
+        )
